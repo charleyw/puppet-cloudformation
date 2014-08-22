@@ -12,11 +12,15 @@
         "ParameterValue": "0.0.0.0/0"
     },
     {
-        "ParameterKey": "PuppetMasterAddress",
-        "ParameterValue": "ip-172-31-11-243.eu-west-1.compute.internal"
+        "ParameterKey": "AgentNodeName",
+        "ParameterValue": "test.internal"
     },
     {
-        "ParameterKey": "PuppetAgentSecurityGroup",
-        "ParameterValue": "puppet-master-1408669804-EC2SecurityGroup-Y92PWO44WTDR"
+        "ParameterKey": "PuppetMasterAddress",
+        "ParameterValue": "ip-172-31-4-86.eu-west-1.compute.internal"
+    },
+    {
+        "ParameterKey": "PuppetClientSecurityGroup",
+        "ParameterValue": "puppet-master-1408672390-EC2SecurityGroup-529P1UBIMU6P"
     }
 ]

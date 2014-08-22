@@ -132,6 +132,12 @@
                 "KeyName": {
                     "Ref": "KeyName"
                 },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "master.puppet"
+                    }
+                ],
                 "UserData": {
                     "Fn::Base64": {
                         "Fn::Join": ["", [

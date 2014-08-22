@@ -23,6 +23,10 @@
             "Default" : "0.0.0.0/0",
             "AllowedPattern" : "^([0-9]+\\.){3}[0-9]+\\/[0-9]+$"
         },
+        "AgentNodeName" : {
+            "Description" : "agent node name",
+            "Type" : "String"
+        },
         "PuppetMasterAddress" : {
             "Description" : "puppet master url",
             "Type" : "String"
@@ -104,10 +108,11 @@
                                         {
                                             "Ref": "PuppetMasterAddress"
                                         },
-                                        "PUPPET_AGENT_CERTNAME=",
+                                        " PUPPET_AGENT_CERTNAME=",
                                         {
-                                            "Fn::GetAtt": [ "PuppetAgent", "PrivateDnsName" ]
-                                        },"\n"
+                                            "Ref": "AgentNodeName"
+                                        },
+                                        "\n"
                                     ]]
                                 }
                             }
@@ -130,6 +135,14 @@
                     { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
                 "SecurityGroups" : [ {"Ref" : "PuppetAgentSecurityGroup"}, {"Ref" : "PuppetClientSecurityGroup"} ],
                 "KeyName" : { "Ref" : "KeyName" },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "AgentNodeName"
+                        }
+                    }
+                ],
                 "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
                     "<script>\n",
 
