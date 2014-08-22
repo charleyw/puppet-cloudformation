@@ -1,0 +1,10 @@
+[
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "t1.micro"
+    },
+    {
+        "ParameterKey": "KeyName",
+        "ParameterValue": "chao-test"
+    }
+]

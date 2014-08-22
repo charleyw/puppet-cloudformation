@@ -1,0 +1,217 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "template for create puppet master",
+    "Parameters": {
+        "InstanceType": {
+            "Description": "EC2 instance type for PuppetMaster",
+            "Type": "String",
+            "Default": "t1.micro",
+            "AllowedValues": [ "t1.micro", "m1.small", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "c1.medium", "c1.xlarge",
+                "cc1.4xlarge" ],
+            "ConstraintDescription": "must contain only alphanumeric characters."
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the PuppetMaster",
+            "Type": "String"
+        }
+    },
+
+    "Resources": {
+        "CFNInitUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "Policies": [
+                    {
+                        "PolicyName": "AccessForCFNInit",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "cloudformation:DescribeStackResource",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CFNKeys": {
+            "Type": "AWS::IAM::AccessKey",
+            "Properties": {
+                "UserName": {
+                    "Ref": "CFNInitUser"
+                }
+            }
+        },
+        "PuppetMasterInstance": {
+            "Type": "AWS::EC2::Instance",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "default": ["updateAPT", "installPackage", "configPuppet", "startPuppetMaster"]
+                    },
+                    "updateAPT": {
+                        "commands": {
+                            "1-download-file": {
+                                "command": ["wget", "https://apt.puppetlabs.com/puppetlabs-release-trusty.deb", "-O", "/var/tmp/puppet.deb"]
+                            },
+                            "2-add-puppet-source": {
+                                "command": ["dpkg", "-i", "/var/tmp/puppet.deb"]
+                            },
+                            "3-update": {
+                                "command": ["apt-get", "update"]
+                            }
+                        }
+                    },
+                    "installPackage": {
+                        "packages": {
+                            "apt": {
+                                "puppetmaster-passenger": [],
+                                "gcc": [],
+                                "make": []
+                            }
+                        }
+                    },
+                    "configPuppet": {
+                        "files": {
+                            "/etc/puppet/autosign.conf": {
+                                "content": "*.internal",
+                                "mode": "100644",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/etc/puppet/fileserver.conf": {
+                                "content": "[modules] \n allow *.internal\n",
+                                "mode": "100644",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/etc/puppet/puppet.conf": {
+                                "content": {
+                                    "Fn::Join": ["", [
+                                        "[main]\n",
+                                        " logdir=/var/log/puppet\n",
+                                        " rundir=/var/run/puppet\n",
+                                        " ssldir=$vardir/ssl\n",
+                                        " pluginsync=true\n",
+                                        "[agent]\n",
+                                        " classfile=$vardir/classes.txt\n",
+                                        " localconfig=$vardir/localconfig\n"]]
+                                },
+                                "mode": "000644",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        }
+                    },
+                    "startPuppetMaster" :{
+                        "services": {
+                            "sysvinit": {
+                                "apache2": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "PuppetGroup"
+                    }
+                ],
+                "ImageId": "ami-4ab46b3d",
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": ["", [
+                            "#!/bin/bash\n",
+                            "sudo apt-get install python-setuptools\n",
+                            "sudo easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+                            "cfn-init --region ", {
+                                "Ref": "AWS::Region"
+                            },
+                            " -s ", {
+                                "Ref": "AWS::StackName"
+                            },
+                            " -r PuppetMasterInstance ",
+                            " --access-key ", {
+                                "Ref": "CFNKeys"
+                            },
+                            " --secret-key ", {
+                                "Fn::GetAtt": ["CFNKeys", "SecretAccessKey"]
+                            }, "\n",
+                            "cfn-signal -e $? '", { "Ref" : "PuppetMasterWaitHandle" }, "'\n"]]
+                    }
+                }
+
+            }
+        },
+        "EC2SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Group for clients to communicate with Puppet Master"
+            }
+        },
+        "PuppetGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Group for puppet communication",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8140",
+                        "ToPort": "8140",
+                        "SourceSecurityGroupName": {
+                            "Ref": "EC2SecurityGroup"
+                        }
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "PuppetMasterWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+        "PuppetMasterWaitCondition": {
+            "Type": "AWS::CloudFormation::WaitCondition",
+            "DependsOn": "PuppetMasterInstance",
+            "Properties": {
+                "Handle": {
+                    "Ref": "PuppetMasterWaitHandle"
+                },
+                "Timeout": "600"
+            }
+        }
+    },
+
+    "Outputs": {
+        "PuppetMasterDNSName": {
+            "Value": {
+                "Fn::GetAtt": [ "PuppetMasterInstance", "PrivateDnsName" ]
+            },
+            "Description": "DNS Name of PuppetMaster"
+        },
+        "PuppetClientSecurityGroup": {
+            "Value": {
+                "Ref": "EC2SecurityGroup"
+            },
+            "Description": "Clients of the Puppet Master should be part of this security group"
+        }
+    }
+}

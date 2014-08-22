@@ -1,0 +1,163 @@
+
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+
+    "Description" : "puppet agent template",
+
+    "Parameters" : {
+        "KeyName" : {
+            "Description" : "Name of an existing Amazon EC2 key pair for RDP access",
+            "Type" : "String"
+        },
+        "InstanceType" : {
+            "Description" : "Amazon EC2 instance type",
+            "Type" : "String",
+            "Default" : "t2.micro",
+            "AllowedValues" : [ "t2.micro", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "c1.medium", "c1.xlarge"]
+        },
+        "SourceCidrForRDP" : {
+            "Description" : "IP Cidr from which you are likely to RDP into the instances. You can add rules later by modifying the created security groups e.g. 54.32.98.160/32",
+            "Type" : "String",
+            "MinLength" : "9",
+            "MaxLength" : "18",
+            "Default" : "0.0.0.0/0",
+            "AllowedPattern" : "^([0-9]+\\.){3}[0-9]+\\/[0-9]+$"
+        },
+        "PuppetMasterAddress" : {
+            "Description" : "puppet master url",
+            "Type" : "String"
+        },
+        "PuppetClientSecurityGroup" : {
+            "Description" : "the group is just using to limit which instances can connect to master",
+            "Type" : "String"
+        }
+    },
+
+    "Mappings" : {
+        "AWSInstanceType2Arch" : {
+            "t2.micro"   : { "Arch" : "64" },
+            "m1.medium"  : { "Arch" : "64" },
+            "m1.large"   : { "Arch" : "64" },
+            "m1.xlarge"  : { "Arch" : "64" },
+            "m2.xlarge"  : { "Arch" : "64" },
+            "m2.2xlarge" : { "Arch" : "64" },
+            "m2.4xlarge" : { "Arch" : "64" },
+            "c1.medium"  : { "Arch" : "64" },
+            "c1.xlarge"  : { "Arch" : "64" }
+        },
+        "AWSRegionArch2AMI" : {
+            "us-east-1"      : {"64" : "ami-30d00f58"},
+            "us-west-1"      : {"64" : "ami-1bb8b55e"},
+            "us-west-2"      : {"64" : "ami-056d2835"},
+            "eu-west-1"      : {"64" : "ami-6f2efa18"},
+            "ap-southeast-1" : {"64" : "ami-64a9f236"},
+            "ap-southeast-2" : {"64" : "ami-f33b5ac9"},
+            "ap-northeast-1" : {"64" : "ami-81a8f380"},
+            "sa-east-1"      : {"64" : "ami-e19931fc"}
+        }
+    },
+
+    "Resources" : {
+        "PuppetAgentSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "Enable HTTP and RDP",
+                "SecurityGroupIngress" : [
+                    {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
+                    {"IpProtocol" : "tcp", "FromPort" : "3389", "ToPort" : "3389", "CidrIp" : { "Ref" : "SourceCidrForRDP" }}
+                ]
+            }
+        },
+
+        "PuppetAgent": {
+            "Type" : "AWS::EC2::Instance",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "config" : {
+                        "files" : {
+                            "c:\\cfn\\cfn-hup.conf" : {
+                                "content" : { "Fn::Join" : ["", [
+                                    "[main]\n",
+                                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                                    "region=", { "Ref" : "AWS::Region" }, "\n"
+                                ]]}
+                            },
+                            "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf" : {
+                                "content": { "Fn::Join" : ["", [
+                                    "[cfn-auto-reloader-hook]\n",
+                                    "triggers=post.update\n",
+                                    "path=Resources.PuppetAgent.Metadata.AWS::CloudFormation::Init\n",
+                                    "action=cfn-init.exe -v -s ", { "Ref" : "AWS::StackId" },
+                                    " -r PuppetAgent",
+                                    " --region ", { "Ref" : "AWS::Region" }, "\n"
+                                ]]}
+                            },
+                            "C:\\Puppet\\puppet-3.6.2.msi" : {
+                                "source" : "https://downloads.puppetlabs.com/windows/puppet-3.6.2.msi"
+                            }
+                        },
+                        "commands" : {
+                            "1-install" : {
+                                "command": {
+                                    "Fn::Join": ["", [
+                                        "msiexec /qn /i C:\\Puppet\\puppet-3.6.2.msi PUPPET_MASTER_SERVER=",
+                                        {
+                                            "Ref": "PuppetMasterAddress"
+                                        },
+                                        "PUPPET_AGENT_CERTNAME=",
+                                        {
+                                            "Fn::GetAtt": [ "PuppetAgent", "PrivateDnsName" ]
+                                        },"\n"
+                                    ]]
+                                }
+                            }
+                        },
+
+                        "services" : {
+                            "windows" : {
+                                "puppet" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "InstanceType" : { "Ref" : "InstanceType" },
+                "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+                    { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
+                "SecurityGroups" : [ {"Ref" : "PuppetAgentSecurityGroup"}, {"Ref" : "PuppetClientSecurityGroup"} ],
+                "KeyName" : { "Ref" : "KeyName" },
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                    "<script>\n",
+
+                    "cfn-init.exe -v -s ", { "Ref" : "AWS::StackId" },
+                    " -r PuppetAgent",
+                    " --region ", { "Ref" : "AWS::Region" }, "\n",
+
+                    "cfn-signal.exe -e %ERRORLEVEL% ", { "Fn::Base64" : { "Ref" : "PuppetAgentWaitHandle" }}, "\n",
+
+                    "</script>"
+                ]]}}
+            }
+        },
+
+        "PuppetAgentWaitHandle" : {
+            "Type" : "AWS::CloudFormation::WaitConditionHandle"
+        },
+
+        "PuppetAgentWaitCondition" : {
+            "Type" : "AWS::CloudFormation::WaitCondition",
+            "DependsOn" : "PuppetAgent",
+            "Properties" : {
+                "Handle" : {"Ref" : "PuppetAgentWaitHandle"},
+                "Timeout" : "3600"
+            }
+        }
+    },
+
+    "Outputs" : {
+    }
+}
