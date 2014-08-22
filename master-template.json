@@ -14,6 +14,10 @@
         "KeyName": {
             "Description": "Name of an existing EC2 KeyPair to enable SSH access to the PuppetMaster",
             "Type": "String"
+        },
+        "ModuleTarLocation": {
+            "Description": "puppet modules in one tar",
+            "Type": "String"
         }
     },
 
@@ -50,7 +54,7 @@
             "Metadata": {
                 "AWS::CloudFormation::Init": {
                     "configSets": {
-                        "default": ["updateAPT", "installPackage", "configPuppet", "startPuppetMaster"]
+                        "default": ["updateAPT", "installPackage", "configPuppet", "installModule", "configNode", "startPuppetMaster"]
                     },
                     "updateAPT": {
                         "commands": {
@@ -101,6 +105,42 @@
                                         " localconfig=$vardir/localconfig\n"]]
                                 },
                                 "mode": "000644",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        }
+                    },
+                    "installModule":{
+                        "sources":{
+                            "/etc/puppet":{
+                                "Ref": "ModuleTarLocation"
+                            }
+                        }
+                    },
+                    "configNode":{
+                        "files":{
+                            "/etc/puppet/manifests/site.pp":{
+                                "content": {
+                                    "Fn::Join": ["", [
+                                        "node /^.*internal$/ {\n",
+                                        "  include cloudviewfilemanager\n",
+                                        "# include acl\n",
+                                        "  include cvinstall\n",
+                                        "  include cvservice\n",
+                                        "# include amd64_win64\n",
+                                        "# include docs\n",
+                                        "# include exabin\n",
+                                        "# include extrajava\n",
+                                        "# include installed_features\n",
+                                        "# include intel_win32\n",
+                                        "# include javabin\n",
+                                        "# include resource\n",
+                                        "# include sdk\n",
+                                        "# include tools\n",
+                                        "}\n"]]
+
+                                },
+                                "mode": "100644",
                                 "owner": "root",
                                 "group": "root"
                             }

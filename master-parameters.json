@@ -6,5 +6,9 @@
     {
         "ParameterKey": "KeyName",
         "ParameterValue": "chao-test"
+    },
+    {
+        "ParameterKey": "ModuleTarLocation",
+        "ParameterValue": "https://s3-eu-west-1.amazonaws.com/puppet-cloudformation-template/modules.tar.gz"
     }
 ]
