@@ -98,6 +98,9 @@
                             },
                             "C:\\Puppet\\puppet-3.6.2.msi" : {
                                 "source" : "https://downloads.puppetlabs.com/windows/puppet-3.6.2.msi"
+                            },
+                            "C:\\git\\git.exe" : {
+                                "source" : "https://github.com/msysgit/msysgit/releases/download/Git-1.9.4-preview20140815/Git-1.9.4-preview20140815.exe"
                             }
                         },
                         "commands" : {
@@ -112,9 +115,20 @@
                                         {
                                             "Ref": "AgentNodeName"
                                         },
+                                        ".",
+                                        {
+                                            "Ref": "AWS::StackName"
+                                        },
+                                        ".internal",
                                         "\n"
                                     ]]
                                 }
+                            },
+                            "2-create-folder" : {
+                                "command": "mkdir \"C:\\apps\\CV` folder\""
+                            },
+                            "3-installGit" : {
+                                "command": "C:\\git\\git.exe /silent"
                             }
                         },
 
@@ -140,6 +154,20 @@
                         "Key": "Name",
                         "Value": {
                             "Ref": "AgentNodeName"
+                        }
+                    },
+                    {
+                        "Key": "Puppet-agent-cert-name",
+                        "Value": {
+                            "Fn::Join": [".", [
+                                {
+                                    "Ref": "AgentNodeName"
+                                },
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "internal"
+                            ]]
                         }
                     }
                 ],
@@ -172,5 +200,19 @@
     },
 
     "Outputs" : {
+        "PuppetAgentCertName": {
+            "Value": {
+                "Fn::Join": [".", [
+                    {
+                        "Ref": "AgentNodeName"
+                    },
+                    {
+                        "Ref": "AWS::StackName"
+                    },
+                    "internal"
+                ]]
+            },
+            "Description": "cert name used to identify this agent in master"
+        }
     }
 }
