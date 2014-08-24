@@ -14,6 +14,10 @@
         "KeyName": {
             "Description": "Name of an existing EC2 KeyPair to enable SSH access to the PuppetMaster",
             "Type": "String"
+        },
+        "ModuleTarLocation": {
+            "Description": "puppet modules in one tar",
+            "Type": "String"
         }
     },
 
@@ -50,7 +54,7 @@
             "Metadata": {
                 "AWS::CloudFormation::Init": {
                     "configSets": {
-                        "default": ["updateAPT", "installPackage", "configPuppet", "configNode", "startPuppetMaster"]
+                        "default": ["updateAPT", "installPackage", "configPuppet", "installModule", "configNode", "startPuppetMaster"]
                     },
                     "updateAPT": {
                         "commands": {
@@ -103,6 +107,13 @@
                                 "mode": "000644",
                                 "owner": "root",
                                 "group": "root"
+                            }
+                        }
+                    },
+                    "installModule":{
+                        "sources":{
+                            "/etc/puppet":{
+                                "Ref": "ModuleTarLocation"
                             }
                         }
                     },
