@@ -181,7 +181,15 @@
                     "cfn-signal.exe -e %ERRORLEVEL% ", { "Fn::Base64" : { "Ref" : "PuppetAgentWaitHandle" }}, "\n",
 
                     "</script>"
-                ]]}}
+                ]]}},
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": "100"
+                        }
+                    }
+                ]
             }
         },
 

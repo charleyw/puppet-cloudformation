@@ -199,7 +199,16 @@
                             }, "\n",
                             "cfn-signal -e $? '", { "Ref" : "PuppetMasterWaitHandle" }, "'\n"]]
                     }
-                }
+                },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": "100"
+                        }
+                    }
+                ]
+
 
             }
         },
