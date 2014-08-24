@@ -123,22 +123,9 @@
                                 "content": {
                                     "Fn::Join": ["", [
                                         "node /^.*internal$/ {\n",
-                                        "  include cloudviewfilemanager\n",
-                                        "# include acl\n",
-                                        "  include cvinstall\n",
-                                        "  include cvservice\n",
-                                        "# include amd64_win64\n",
-                                        "# include docs\n",
-                                        "# include exabin\n",
-                                        "# include extrajava\n",
-                                        "# include installed_features\n",
-                                        "# include intel_win32\n",
-                                        "# include javabin\n",
-                                        "# include resource\n",
-                                        "# include sdk\n",
-                                        "# include tools\n",
-                                        "}\n"]]
-
+                                        "  notify {\"Hello world!!\"}\n",
+                                        "}\n"
+                                    ]]
                                 },
                                 "mode": "100644",
                                 "owner": "root",
