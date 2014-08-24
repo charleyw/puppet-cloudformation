@@ -5,8 +5,8 @@ This repo is hosting template files for creating puppet master and agent on aws.
 ### How to use
 Clone this repo:
 	
-	git clone 
-	cd 
+	git clone https://github.com/charleyw/puppet-cloudformation.git
+	cd puppet-cloudformation
 		
 ##### For puppet master
 
